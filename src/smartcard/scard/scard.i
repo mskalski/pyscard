@@ -128,6 +128,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 %{
 #ifdef WIN32
 #include <windows.h>
+#include <stdio.h>
 #endif
 
 #ifdef __APPLE__
@@ -769,32 +770,71 @@ static long _SCARD_CTL_CODE(long code)
 static ERRORSTRING _GetErrorMessage(long lErrCode)
 {
     #ifdef WIN32
-    #define _NO_SERVICE_MSG "The Smart card resource manager is not running."
+        //#define _NO_SERVICE_MSG "The Smart card resource manager is not running."
+        static const WCHAR _NO_SERVICE_MSG[] = L"The Smart card resource manager is not running.";
 
         DWORD dwRetCode;
         LPVOID ppszError;
+        DWORD dwSavedError = GetLastError();
 
-        dwRetCode=FormatMessage(
+        SetLastError(0);
+
+    #ifndef ERROR_RESOURCE_LANG_NOT_FOUND
+    #  define ERROR_RESOURCE_LANG_NOT_FOUND 0x717
+    #endif
+    #ifndef ERROR_MUI_FILE_NOT_FOUND
+    #  define ERROR_MUI_FILE_NOT_FOUND 15100
+    #endif
+    #ifndef ERROR_MUI_FILE_NOT_LOADED
+    #  define ERROR_MUI_FILE_NOT_LOADED 15105
+    #endif
+
+        // Try first to get english message string, if fails because of lack string resources, use default
+        dwRetCode=FormatMessageW(
             FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_MAX_WIDTH_MASK,
             NULL,
             lErrCode,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            (LPTSTR)&ppszError,
+            MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+            // MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+            // MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPWSTR)&ppszError,
             0,
             NULL);
 
         if (0L==dwRetCode)
         {
+            DWORD dwError = GetLastError();
+            if (dwError == ERROR_RESOURCE_LANG_NOT_FOUND ||
+                dwError == ERROR_MUI_FILE_NOT_FOUND ||
+                dwError == ERROR_MUI_FILE_NOT_LOADED)
+            {
+                dwRetCode=FormatMessageW(
+                    FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                    NULL,
+                    lErrCode,
+                    0,
+                    (LPWSTR)&ppszError,
+                    0,
+                    NULL);
+            }
+        }
+
+        if (0L==dwRetCode)
+        {
+            printf("Failed to get error description, error: 0x%08lx\n", (unsigned long)GetLastError());
+
             ppszError=NULL;
             if (SCARD_E_NO_SERVICE==lErrCode)
             {
-                ppszError=(LPVOID)LocalAlloc(LPTR, sizeof(_NO_SERVICE_MSG)+1);
+                ppszError=(LPVOID)LocalAlloc(LPTR, sizeof(_NO_SERVICE_MSG));
                 if (NULL!=ppszError)
                 {
-                    strncpy(ppszError, _NO_SERVICE_MSG, sizeof(_NO_SERVICE_MSG)+1);
+                    memcpy(ppszError, _NO_SERVICE_MSG, sizeof(_NO_SERVICE_MSG));
                 }
             }
         }
+
+        SetLastError(dwSavedError);
 
         return ppszError;
     #endif // WIN32

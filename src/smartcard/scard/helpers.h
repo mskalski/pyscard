@@ -27,7 +27,11 @@ typedef struct
     SCARDDWORDARG cBytes;
 } BYTELIST ;
 
+#ifdef WIN32
+typedef wchar_t* ERRORSTRING;
+#else
 typedef char* ERRORSTRING;
+#endif
 
 #ifdef PCSCLITE
 typedef struct

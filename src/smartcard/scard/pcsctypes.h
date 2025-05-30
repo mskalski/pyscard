@@ -32,8 +32,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
         typedef long SCARDRETCODE;
     #endif
 #else // !PCSCLITE
-    typedef unsigned long SCARDDWORDARG;
-    typedef long SCARDRETCODE;
+    // On Windows DWORD and LONG are always 32-bit
+    typedef unsigned int SCARDDWORDARG;
+    typedef int SCARDRETCODE;
 #endif
 
 #endif //__PCSCTYPES_H__

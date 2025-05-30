@@ -40,10 +40,10 @@ platform_libraries = []
 platform_extra_compile_args = []  # ['-ggdb', '-O0']
 platform_extra_link_args = []  # ['-ggdb']
 
-if platform.system() == "Windows":
+if platform.system() == "Windows" or platform.system().lower().startswith("cygwin"):
     platform__cc_defines = [("WIN32", "100")]
     platform_swig_opts = ["-DWIN32"]
-    if "mingw" not in get_platform():
+    if "mingw" not in get_platform() and "cygwin" not in get_platform():
         platform_sources = ["src/smartcard/scard/scard.rc"]
     platform_libraries = ["winscard"]
 
