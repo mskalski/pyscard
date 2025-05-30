@@ -19,7 +19,11 @@ from typing import Any, Callable, Protocol, TypeVar
 if sys.version_info >= (3, 10):
     from typing import ParamSpec
 else:
-    from typing_extensions import ParamSpec
+    try:
+        from typing_extensions import ParamSpec
+    except ImportError:
+        # ParamSpec is just for typing, not required for runtime
+        ParamSpec = list
 
 
 T = TypeVar("T")
