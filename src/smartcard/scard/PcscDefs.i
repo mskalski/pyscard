@@ -236,6 +236,9 @@ typedef enum
 /* int and unsigned long are different on 64-bits systems */
 #ifdef __APPLE__
 #define TYPE int
+#elif defined WIN32 && defined __LP64__
+/* possibly cygwin/MinGW on Windows - result from SCard* functions is 32-bit LONG */
+#define TYPE int
 #else
 #define TYPE long
 #endif

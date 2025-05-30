@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================*/
 #ifdef WIN32
     #include <windows.h>
+    #include <stdio.h>
 #endif
 
 #ifdef __APPLE__
@@ -275,7 +276,8 @@ Builds a Python string from an ERRORSTRING
     if( NULL!=source )
     {
 #if defined(WIN32)
-        pystr = PyUnicode_DecodeLocale(source, NULL);
+        //pystr = PyUnicode_DecodeLocale(source, NULL);
+        pystr = PyUnicode_FromWideChar(source, -1);
 #else
         pystr = PyUnicode_FromString( source );
 #endif
