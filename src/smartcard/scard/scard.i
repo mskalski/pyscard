@@ -555,14 +555,26 @@ static SCARDRETCODE _ListReaders(
     }
 
     #ifdef SCARD_AUTOALLOCATE
+        LONG lRetCode;
         // autoallocate memory; will be freed on output typemap
         cchReaders=SCARD_AUTOALLOCATE;
 
         pmszReaders->ac=NULL;
         pmszReaders->hcontext=hcontext;
 
-        return (mySCardListReadersA)(hcontext, mszGroups,
+        lRetCode = (mySCardListReadersA)(hcontext, mszGroups,
             (LPTSTR)&pmszReaders->ac, &cchReaders);
+        if (lRetCode != SCARD_S_SUCCESS && cchReaders != 0 && cchReaders != SCARD_AUTOALLOCATE)
+        {
+            unsigned int j;
+            fprintf(stderr, "ListReaders(AUTOALLOCATE): returned: rv: 0x%08lX, size %lu\n",
+                    (unsigned long)lRetCode, (unsigned long)cchReaders);
+            fprintf(stderr, "Data in buffer:");
+            for (j=0; j<cchReaders; j++)
+                fprintf(stderr, " %02X", (unsigned int)pmszReaders->ac[j] & 0xff);
+            fprintf(stderr, "\n");
+        }
+        return lRetCode;
     #else
         // set hcontext to 0 so that mem_Free will
         // be called instead of SCardFreeMemory
@@ -585,14 +597,29 @@ static SCARDRETCODE _ListReaders(
         // so function returns SCARD_E_INSUFFICIENT_BUFFER.
         for (int i=0; i<3; i++)
         {
+            SCARDDWORDARG cchReadersAllocated = cchReaders;
             pmszReaders->ac=mem_Malloc(cchReaders*sizeof(char));
             if (NULL==pmszReaders->ac)
             {
                 return SCARD_E_NO_MEMORY;
             }
+            // Zero memory, to handle reader removal in beetween, otherwise SystemError
+            // would be raised on invalid encoding caused by unitialized memory.
+            memset(pmszReaders->ac, 0x80, cchReaders*sizeof(char));
 
             lRetCode = (mySCardListReadersA)(hcontext, mszGroups,
                 (LPTSTR)pmszReaders->ac, &cchReaders);
+
+            if (cchReaders != cchReadersAllocated)
+            {
+                unsigned int j;
+                fprintf(stderr, "ListReaders(%d): returned: rv: 0x%08lX, size %lu, allocated: %lu\n",
+                        i, (unsigned long)lRetCode, (unsigned long)cchReaders, (unsigned long)cchReadersAllocated);
+                fprintf(stderr, "Data in buffer:");
+                for (j=0; j<cchReadersAllocated; j++)
+                    fprintf(stderr, " %02X", (unsigned int)pmszReaders->ac[j] & 0xff);
+                fprintf(stderr, "\n");
+            }
             if (lRetCode != SCARD_E_INSUFFICIENT_BUFFER)
             {
                 break;
